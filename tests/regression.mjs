@@ -194,7 +194,7 @@ try {
   await setInput(page, '[data-free="extras"][data-k="desc"]', 'TEST FREIGHT ONCE');
   await setInput(page, '[data-free="extras"][data-k="amt"]', '175');
 
-  await click(page, '[data-step="7"]');
+  await click(page, '[data-step="8"]');
   await page.waitForSelector('[data-quotetotals]');
   const beforeDoors = await page.evaluate(() => {
     const q = document.querySelector('[data-quotetotals]');
@@ -255,7 +255,7 @@ try {
   await click(page, '[data-door][data-k="type"][data-val="sliding"]');
   await page.waitForSelector('[data-door][data-k="type"][data-val="sliding"].on');
 
-  await click(page, '[data-step="7"]');
+  await click(page, '[data-step="8"]');
   await page.waitForSelector('[data-unitblock]');
   const withDoors = await page.evaluate(() => {
     const blocks = [...document.querySelectorAll('[data-unitblock]')].map((el) => ({ sub: +el.dataset.unitsub, text: el.innerText }));
@@ -335,7 +335,7 @@ try {
     cards: document.querySelectorAll('[data-unitcard]').length
   }));
   if (copyDims.cards !== 3 || copyDims.L !== '2000' || copyDims.H !== '2200') fail('duplicate did not copy the freezer: ' + JSON.stringify(copyDims));
-  await click(page, '[data-step="7"]');
+  await click(page, '[data-step="8"]');
   await page.waitForSelector('[data-sharedblock]');
   const freightAfterDup = await page.evaluate(() => document.body.innerText.split('TEST FREIGHT ONCE').length - 1);
   if (freightAfterDup !== 1) fail('duplicating a unit duplicated project freight');
