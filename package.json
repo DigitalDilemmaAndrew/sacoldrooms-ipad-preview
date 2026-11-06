@@ -2,7 +2,7 @@
   "name": "sacoldrooms-ipad-preview",
   "private": true,
   "scripts": {
-    "test": "node tests/regression.mjs && node tests/map-pin.mjs && node tests/spacing.mjs && node tests/photos.mjs"
+    "test": "node tests/regression.mjs && node tests/map-pin.mjs && node tests/spacing.mjs && node tests/photos.mjs && node tests/overlays.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^24.29.0"
