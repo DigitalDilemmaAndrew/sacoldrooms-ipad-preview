@@ -329,6 +329,78 @@ try {
   console.log('photo migration', migrated);
   await mig.close();
 
+  const demo = await boot(browser, 1376, 1032);
+  await demo.page.waitForFunction(() => {
+    const q = S.quotes.find((x) => x.demo);
+    return q && q.examplePhotosSeeded && q.photos.filter((p) => p.example).length === 5;
+  });
+  const seeded = await demo.page.evaluate(async () => {
+    const q = S.quotes.find((x) => x.demo);
+    const unit = q.units[0].id;
+    const raw = localStorage.getItem('sacr-ipad-v1');
+    const rows = {};
+    for (const p of q.photos) {
+      const rec = await PH.get(q.id, p.id);
+      const bmp = rec && rec.full ? await createImageBitmap(rec.full) : null;
+      rows[p.id] = { tag: p.tag, caption: p.caption, unit: p.unitId, example: p.example, w: bmp && bmp.width, h: bmp && bmp.height };
+    }
+    return { unit, rows, leaked: raw.includes('data:image'), flagged: q.examplePhotosSeeded };
+  });
+  const expect = {
+    'ex-site-access': ['access', 'Rear lane access, roller door and side gate', ''],
+    'ex-plant': ['plant', 'Roof wall brackets for condensing unit', seeded.unit],
+    'ex-existing': ['existing', 'Existing coolroom, evaporator and door to replace', seeded.unit],
+    'ex-electrical': ['electrical', 'Main switchboard, back of house', ''],
+    'ex-floor': ['floor', 'Slab with coolroom footprint marked out', '']
+  };
+  for (const [id, [tag, caption, unit]] of Object.entries(expect)) {
+    const row = seeded.rows[id];
+    if (!row || row.tag !== tag || row.caption !== caption || row.unit !== unit || !row.example) fail('demo seed ' + id + ' ' + JSON.stringify(row));
+    if (!row.w || row.w > 1600 || row.h > 1600) fail('demo photo size ' + id + ' ' + JSON.stringify(row));
+  }
+  if (seeded.leaked) fail('example JPEGs were written into localStorage');
+  await demo.page.evaluate(() => [...document.querySelectorAll('[data-open]')].find((el) => el.innerText.includes('DEMO')).click());
+  await demo.page.waitForSelector('[aria-label="Step 8: Photos"]');
+  await demo.page.click('[aria-label="Step 8: Photos"]');
+  await demo.page.waitForSelector('[data-example="1"] .exbadge');
+  const badges = await demo.page.evaluate(() => document.querySelectorAll('[data-phcard][data-example="1"] .exbadge').length);
+  if (badges !== 5) fail('thumbnail badges ' + badges);
+  await demo.page.click('[data-phopen="ex-plant"]');
+  await demo.page.waitForFunction(() => (document.querySelector('[data-lbcap]') || {}).innerText && document.querySelector('[data-lbcap]').innerText.includes('Example photo'));
+  await demo.page.click('[data-lbclose]');
+  await demo.page.screenshot({ path: `${ART}/demo-photos-step-ipad-1376x1032.png` });
+  await demo.page.click('[aria-label="Step 9: Review"]');
+  await demo.page.waitForSelector('[data-preview]');
+  await demo.page.click('[data-preview]');
+  await demo.page.waitForSelector('.phfig[data-example="1"] .exbadge');
+  const printed = await demo.page.evaluate(() => ({
+    n: document.querySelectorAll('.phfig[data-example="1"]').length,
+    site: [...document.querySelectorAll('[data-phgroup="site"]')].length,
+    caps: document.body.innerText.includes('Rear lane access, roller door and side gate') && document.body.innerText.includes('Example photo')
+  }));
+  if (printed.n !== 5 || !printed.caps) fail('preview example photos ' + JSON.stringify(printed));
+  await demo.page.screenshot({ path: `${ART}/demo-photos-preview-ipad-1376x1032.png`, fullPage: true });
+  await demo.page.click('[data-edit]');
+  await demo.page.click('[aria-label="Step 8: Photos"]');
+  await demo.page.waitForSelector('[data-phdel="ex-site-access"]');
+  await demo.page.click('[data-phdel="ex-site-access"]');
+  await demo.page.waitForSelector('[data-confirmph="ex-site-access"]');
+  await demo.page.click('[data-confirmph="ex-site-access"]');
+  await demo.page.waitForFunction(() => !S.quotes.find((x) => x.demo).photos.some((p) => p.id === 'ex-site-access'));
+  await demo.page.reload({ waitUntil: 'domcontentloaded' });
+  await demo.page.waitForFunction(() => {
+    const q = S.quotes.find((x) => x.demo);
+    return q && q.examplePhotosSeeded && !q.photos.some((p) => p.id === 'ex-site-access') && q.photos.filter((p) => p.example).length === 4;
+  });
+  const fresh = await demo.page.evaluate(() => {
+    const made = blankQuote();
+    return { demo: S.quotes.find((x) => x.demo).photos.length, blank: made.photos.length, demoFlag: made.demo || false };
+  });
+  if (fresh.blank !== 0) fail('a new quote inherited example photos');
+  if (demo.errors.length) fail('demo page errors ' + demo.errors.join(' | '));
+  console.log('demo photos seeded once', fresh.demo);
+  await demo.page.close();
+
   console.log('PHOTOS PASSED');
 } finally {
   await browser.close();
